@@ -7,7 +7,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setuptools.setup(
     name="streamlit_modal_input",
-    version="0.0.3",
+    version="0.0.5",
     author="Baptiste Ferrand",
     author_email="bferrand.math@gmail.com",
     description="Modal text input component for Streamlit",

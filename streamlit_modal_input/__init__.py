@@ -33,15 +33,12 @@ class FirestoreListener:
             return True
         
     @staticmethod
-    def firebase_init_app(cred):
+    def firebase_init_app(cred_dict):
         if FirestoreListener.firebase_app_is_initialized():
             pass
         else:
-            cred_dict=dict(cred)
-            with open(root_join('credentials.json'),'w') as f:
-                json.dump(cred_dict,f)
-            firebase_admin.initialize_app(credentials.Certificate(root_join('credentials.json')))
-            os.remove(root_join('credentials.json'))
+            cred=credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
 
     #Firestore listener to implement the same thing when the app is served on streamlit's cloud 
     def __init__(self,credentials,collection,document):
