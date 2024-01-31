@@ -1,13 +1,14 @@
 import React from "react";
 import { Streamlit, StreamlitComponentBase, withStreamlitConnection } from "streamlit-component-lib";
 import { initializeApp, FirebaseApp } from "firebase/app";
+import { getAuth, signInWithCustomToken } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import tinycolor from 'tinycolor2'
 import './App.css';
 
 interface State {
   inputText: string;
-  firebaseInitialized: boolean;
+  isAuthenticated: boolean;
   firebaseApp:FirebaseApp | null;
   enabled: boolean;
   hasFocus: boolean;
@@ -25,17 +26,28 @@ class ModalInput extends StreamlitComponentBase<State> {
 
     public state = {
         inputText: "",
-        firebaseInitialized: false,
+        isAuthenticated:false,
         firebaseApp: null,
         enabled: false,
         hasFocus: false,
     };
 
     componentDidMount() {
-        if (!this.state.firebaseInitialized && this.props.args["firebase_config"]) {
+        if (!this.state.isAuthenticated && this.props.args["firebase_config"]) {
             const app=initializeApp(this.props.args["firebase_config"]);
-            this.setState({ firebaseInitialized: true, firebaseApp: app });
-        }
+            const auth=getAuth(app);
+            signInWithCustomToken(auth, this.props.args['idToken'])
+            .then(() => {
+                // Authentication successful
+                this.setState({ isAuthenticated: true, firebaseApp:app });
+            })
+            .catch(error => {
+                console.error("Error authenticating with Firebase: ", error);
+                this.setState({ isAuthenticated: false, firebaseApp: null });
+                // Handle authentication failure (e.g., show error message)
+            });
+        } 
+
         if (this.inputRef.current) {
             this.inputRef.current.focus();
         }
@@ -57,7 +69,7 @@ class ModalInput extends StreamlitComponentBase<State> {
         const firestoreCollection=this.props.args["collection"];
         const firestoreDocument = this.props.args["document"];
         
-        if (this.state.firebaseApp) {
+        if (this.state.firebaseApp && this.state.isAuthenticated) {
             const db = getFirestore(this.state.firebaseApp);
             const inputRef = doc(db, firestoreCollection, firestoreDocument);
             const output={
@@ -72,7 +84,7 @@ class ModalInput extends StreamlitComponentBase<State> {
                 console.error("Error writing to Firestore: ", error);
             }
         } else {
-            console.error("Firebase App is not initialized");
+            console.error("Firebase App is not initialized or not properly authenticated");
         }
       };
 
