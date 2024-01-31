@@ -71,13 +71,13 @@ class ModalInput extends StreamlitComponentBase<State> {
         
         if (this.state.firebaseApp && this.state.isAuthenticated) {
             const db = getFirestore(this.state.firebaseApp);
-            const inputRef = doc(db, firestoreCollection, firestoreDocument);
+            const docRef = doc(db, firestoreCollection, firestoreDocument);
             const output={
                 content: this.state.inputText,
                 Id: Math.floor(Date.now() / 1000)
             };
             try {
-                await setDoc(inputRef, output);
+                await setDoc(docRef, output);
                 this.setState({ enabled: false });
                 Streamlit.setComponentValue(this.state.inputText);
             } catch (error) {
