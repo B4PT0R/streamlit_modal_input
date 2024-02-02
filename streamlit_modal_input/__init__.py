@@ -2,7 +2,7 @@ import streamlit.components.v1 as components
 import os
 import streamlit as st
 
-_RELEASE = False
+_RELEASE = True
 
 if not _RELEASE:
     _component_func = components.declare_component("streamlit_modal_input",url="http://localhost:3001")
