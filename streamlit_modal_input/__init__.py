@@ -1,9 +1,6 @@
 import streamlit.components.v1 as components
 import os
-from datetime import datetime
-from objdict_bf import objdict
-from firebase_user import FirebaseClient
-import time
+import streamlit as st
 
 _RELEASE = False
 
@@ -15,7 +12,7 @@ else:
     _component_func = components.declare_component("streamlit_modal_input", path=build_dir)
     
 
-def modal_input(prompt='',client=None,key=None):
+def modal_input(prompt='',firebase_client=None,key=None):
 
     if not key:
         key='modal_input'
@@ -28,17 +25,18 @@ def modal_input(prompt='',client=None,key=None):
     else:
         value=st.session_state[key+'_output']
 
-    config=client.config
-    user=client.user
-    collection="messages"
+    config=firebase_client.config
+    user=firebase_client.user
+    collection="streamlit_modal_input"
     document=user.email
     
     if not key in st.session_state:
-        listener=client.firestore.listener(collection,document,interval=0.5)
+        listener=firebase_client.firestore.listener(collection,document,interval=0.5,timeout=300)
         listener.start()
         _component_func(prompt=prompt,projectId=config.projectId,apiKey=config.apiKey,idToken=user.idToken,collection=collection,document=document,value=value,enabled=True,key=key,default=None)
         data=listener.get_data()
         listener.stop()
+        firebase_client.firestore.delete_document(collection,document)
         output=data.content
         st.session_state[key+'_output']=output
     else:
@@ -48,21 +46,7 @@ def modal_input(prompt='',client=None,key=None):
 
 
 if not _RELEASE:
-
-    import streamlit as st
-    
-    state=st.session_state
-
-    if not 'client' in state:
-        config=objdict.load("app_config.json")
-        state.client=FirebaseClient(config,verbose=True)
-        state.client.auth.sign_in("bferrand.maths@gmail.com","baptor314")
-
-    txt=modal_input(client=state.client,key='modal_input')
-    
-    st.write(txt)
-
-    st.button("click me")
+    pass
 
 
 
