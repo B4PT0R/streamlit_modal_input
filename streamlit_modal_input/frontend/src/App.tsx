@@ -1,15 +1,11 @@
 import React from "react";
-import { Streamlit, StreamlitComponentBase, withStreamlitConnection } from "streamlit-component-lib";
-import { initializeApp, FirebaseApp } from "firebase/app";
-import { getAuth, signInWithCustomToken } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { StreamlitComponentBase, withStreamlitConnection } from "streamlit-component-lib";
+import axios from 'axios';
 import tinycolor from 'tinycolor2'
 import './App.css';
 
 interface State {
   inputText: string;
-  isAuthenticated: boolean;
-  firebaseApp:FirebaseApp | null;
   enabled: boolean;
   hasFocus: boolean;
 }
@@ -26,32 +22,19 @@ class ModalInput extends StreamlitComponentBase<State> {
 
     public state = {
         inputText: "",
-        isAuthenticated:false,
-        firebaseApp: null,
         enabled: false,
         hasFocus: false,
     };
 
     componentDidMount() {
-        if (!this.state.isAuthenticated && this.props.args["firebase_config"]) {
-            const app=initializeApp(this.props.args["firebase_config"]);
-            const auth=getAuth(app);
-            signInWithCustomToken(auth, this.props.args['idToken'])
-            .then(() => {
-                // Authentication successful
-                this.setState({ isAuthenticated: true, firebaseApp:app });
-            })
-            .catch(error => {
-                console.error("Error authenticating with Firebase: ", error);
-                this.setState({ isAuthenticated: false, firebaseApp: null });
-                // Handle authentication failure (e.g., show error message)
-            });
-        } 
+
+        console.log('Component did mount.')
 
         if (this.inputRef.current) {
             this.inputRef.current.focus();
         }
-        this.setState({enabled:this.props.args["enabled"],inputText:this.props.args["value"]})
+
+        this.setState({ enabled: this.props.args['enabled'], inputText: this.props.args['value'] });
     }
 
     handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,34 +42,34 @@ class ModalInput extends StreamlitComponentBase<State> {
     };
 
     handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        // Check if Enter is pressed
         if (event.key === 'Enter') {
-          this.handleSubmit();
+            this.handleSubmit();
         }
     };
 
     handleSubmit = async () => {
-        const firestoreCollection=this.props.args["collection"];
-        const firestoreDocument = this.props.args["document"];
+        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${this.props.args['projectId']}/databases/(default)/documents/${this.props.args['collection']}/${this.props.args['document']}`;
+        const idToken = this.props.args['idToken'];
         
-        if (this.state.firebaseApp && this.state.isAuthenticated) {
-            const db = getFirestore(this.state.firebaseApp);
-            const docRef = doc(db, firestoreCollection, firestoreDocument);
-            const output={
-                content: this.state.inputText,
-                Id: Math.floor(Date.now() / 1000)
-            };
-            try {
-                await setDoc(docRef, output);
-                this.setState({ enabled: false });
-                Streamlit.setComponentValue(this.state.inputText);
-            } catch (error) {
-                console.error("Error writing to Firestore: ", error);
+        const output = {
+            fields: {
+                content: { stringValue: this.state.inputText },
+                Id: { integerValue: Math.floor(Date.now() / 1000).toString() }
             }
-        } else {
-            console.error("Firebase App is not initialized or not properly authenticated");
+        };
+
+        const headers = {
+            Authorization: `Bearer ${idToken}`,
+            'Content-Type': 'application/json',
+        };
+
+        try {
+            await axios.patch(firestoreUrl, output, { headers });
+            this.setState({ enabled: false });
+        } catch (error) {
+            console.error("Error writing to Firestore: ", error);
         }
-      };
+    };
 
     private TextInputStyle = (Theme:any):any => {
         const Height=21
@@ -120,7 +103,7 @@ class ModalInput extends StreamlitComponentBase<State> {
             primaryColor: 'red',
             textColor: 'white'
           };
-        Streamlit.setComponentValue(this.state.inputText)
+
         return (
             <div className="modal-input">
             <input
